@@ -4,6 +4,10 @@ This bot's function is to moderate unautorized links from being posted in the ch
 
 ## Start
 
+`$> yarn start`
+
+Or
+
 `$> node deploy-commands.js`
 `$> node index.js`
 
