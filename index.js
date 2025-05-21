@@ -1,9 +1,18 @@
+import 'dotenv/config'
 import fs from "node:fs";
 import path from "node:path";
-import { Client, Collection, Events, GatewayIntentBits, ShardEvents } from 'discord.js';
-import 'dotenv/config'
+import { 
+	Client, 
+	Collection, 
+	Events, 
+	GatewayIntentBits, 
+	PermissionFlagsBits,
+} from 'discord.js';
+
 import { fileURLToPath } from 'url';
-import whitelist from "./whitelist.js";
+
+const whitelistString = fs.readFileSync('whitelist.txt', 'utf8');
+const whitelist = whitelistString.split("\n");
 
 const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
 const __dirname = path.dirname(__filename); // get the name of the directory
@@ -11,7 +20,11 @@ const __dirname = path.dirname(__filename); // get the name of the directory
 // retrieve auth token from ENV
 const token = process.env.DISCORD_TOKEN;
 // Create a new client instance
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
+const client = new Client({ intents: [
+	GatewayIntentBits.Guilds,
+	GatewayIntentBits.GuildMessages,
+	GatewayIntentBits.MessageContent
+] });
 
 /** Initialize commands */
 client.commands = new Collection();
@@ -33,29 +46,47 @@ for (const folder of commandFolders) {
 	}
 }
 
+
 client.once(Events.ClientReady, readyClient => {
 	console.log(`Ready! Logged in as ${readyClient.user.tag}`);
-    console.debug('whitelist:')
-    console.debug(whitelist)
 });
 
-client.on(Events.MessageCreate, (msg) => {
+client.on(Events.MessageCreate,async (msg) => {
+	/**
+	 * Moderate links
+	 */
     const isURL = msg.content.startsWith('http://') || msg.content.startsWith('https://');
     if(!isURL) {
-        console.debug('message is not an url, allowed')
+        // console.debug('message is not an url, allowed')
         return true;
     }
     const url = new URL(msg.content);
     const isWhitelisted = whitelist.find((host) => host == url.hostname) !== undefined
+	const userIsAllowed = msg.member.roles.cache.has(PermissionFlagsBits.ManageMessages)
 
-    if(isURL && !isWhitelisted) {
+    if(isURL && !isWhitelisted && !userIsAllowed) {
         msg.delete()
     }
+
+	/**
+	 * Moderate Impersonators
+	 */
+	// retrieve message author handle & displayName
+	const memberHandle = msg.member.displayName
+	const memberUsername = msg.member.user.username
+	// retrieve all guild members and filter out the ones with priviledged permissions 
+	const guildMembers = (await msg.guild.members.fetch({ withPresences: true }));
+	const elevatedMembers = guildMembers.filter(member => {
+		member.roles.cache.has(PermissionFlagsBits.ManageMessages)
+	});
+	// if(levenshteinDistance(memberHandle, eMember.) < 2 || levenshteinDistance(memberUsername) < 2) {
+	// 	// username similar to guild priviledged user
+	// }
 })
 
-client.on(Events.InteractionCreate,async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    interaction.mes
+client.on(Events.InteractionCreate, async (interaction) => {
+	if (!interaction.isAutocomplete() && !interaction.isChatInputCommand()) return;
+
     const command = interaction.client.commands.get(interaction.commandName);
     if (!command) {
 		console.error(`No command matching ${interaction.commandName} was found.`);
@@ -63,7 +94,11 @@ client.on(Events.InteractionCreate,async (interaction) => {
 	}
 
     try {
-		await command.execute(interaction);
+		if(interaction.isAutocomplete()) {
+			await command.autocomplete(interaction);
+		} else {
+			await command.execute(interaction);
+		}
 	} catch (error) {
 		console.error(error);
 		if (interaction.replied || interaction.deferred) {
