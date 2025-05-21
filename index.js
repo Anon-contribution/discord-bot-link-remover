@@ -7,9 +7,13 @@ import {
 	Events, 
 	GatewayIntentBits, 
 	PermissionFlagsBits,
+	AttachmentBuilder
 } from 'discord.js';
 
 import { fileURLToPath } from 'url';
+
+// import Canvas from '@napi-rs/canvas'
+import { generateCandlestickImage } from './helpers/chart.js';
 
 const whitelistString = fs.readFileSync('whitelist.txt', 'utf8');
 const whitelist = whitelistString.split("\n");
@@ -70,25 +74,31 @@ client.once(Events.ClientReady, readyClient => {
 });
 
 client.on(Events.MessageCreate,async (msg) => {
+	console.log('test')
 	/**
 	 * Moderate links
 	 */
     const isURL = msg.content.startsWith('http://') || msg.content.startsWith('https://');
-    if(!isURL) {
-        // console.debug('message is not an url, allowed')
-        return true;
+    if(isURL) {
+		const url = new URL(msg.content);
+		const isWhitelisted = whitelist.find((host) => host == url.hostname) !== undefined
+		const userIsAllowed = msg.member.roles.cache.has(PermissionFlagsBits.ManageMessages)
+	
+		if(!isWhitelisted && !userIsAllowed) {
+			msg.delete()
+		}
     }
-    const url = new URL(msg.content);
-    const isWhitelisted = whitelist.find((host) => host == url.hostname) !== undefined
-	const userIsAllowed = msg.member.roles.cache.has(PermissionFlagsBits.ManageMessages)
 
-    if(isURL && !isWhitelisted && !userIsAllowed) {
-        msg.delete()
-    }
+	// handle !fc command, generate chart
+	if(msg.content.startsWith('fc ')) {
+		// extract ticker symbol & candle time.
+		const buff = await generateCandlestickImage()
+		const attachment = new AttachmentBuilder(buff, { name: 'BTC-USD.png' });
+		await msg.reply({ content: 'Chart BTC/USD', files: [ attachment ] });
+	}
 
 	/**
 	 * Moderate Impersonators
-	 */
 	// retrieve message author handle & displayName
 	const memberHandle = msg.member.displayName
 	const memberUsername = msg.member.user.username
@@ -100,6 +110,7 @@ client.on(Events.MessageCreate,async (msg) => {
 	// if(levenshteinDistance(memberHandle, eMember.) < 2 || levenshteinDistance(memberUsername) < 2) {
 	// 	// username similar to guild priviledged user
 	// }
+	 */
 })
 
 client.on(Events.InteractionCreate, async (interaction) => {

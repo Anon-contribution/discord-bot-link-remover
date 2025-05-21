@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, PermissionFlagsBits } from "discord.js"
 import fs from 'fs'
-import { dirname } from "../../helpers.js";
+import { dirname } from "../../helpers/utils.js";
 
 const whitelistString = fs.readFileSync(dirname(import.meta.url) + '/../../whitelist.txt', 'utf8');
 

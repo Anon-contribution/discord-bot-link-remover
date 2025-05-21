@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js"
-import { isURL, dirname } from "../../helpers.js";
+import { isURL, dirname } from "../../helpers/utils.js";
 import tld from 'tldjs'
 import fs from 'fs'
 

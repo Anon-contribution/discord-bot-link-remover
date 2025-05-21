@@ -1,5 +1,5 @@
 import { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } from "discord.js"
-import { dirname } from "../../helpers.js";
+import { dirname } from "../../helpers/utils.js";
 import fs from 'fs'
 
 const whitelistPath = dirname(import.meta.url) + '/../../whitelist.txt';
